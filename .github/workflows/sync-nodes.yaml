@@ -2,8 +2,8 @@ name: Sync V2Ray Nodes
 
 on:
   schedule:
-    # Run every 1 hours
-    - cron: '0 */1 * * *'
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
   workflow_dispatch:
     # Allow manual trigger
 
@@ -39,7 +39,7 @@ jobs:
         echo "" >> ../temp_nodes.txt
         
         # Process all files except README.md
-        find . -type f -name "*.txt" -o -name "*.yaml" -o -name "*.yml" -o -name "*.json" -o -name "*.conf" | grep -v README.md | while read file; do
+        find . -type f ! -name "*.*" | grep -v README.md | while read file; do
           if [ -f "$file" ]; then
             echo "## Content from: $file" >> ../temp_nodes.txt
             echo "" >> ../temp_nodes.txt
@@ -66,7 +66,7 @@ jobs:
         fi
         
         # Look for any files with node configurations
-        find . -type f \( -name "*.txt" -o -name "*.yaml" -o -name "*.yml" \) -exec grep -l "vmess\|vless\|trojan\|ss://" {} \; | while read file; do
+        find . -type f ! -name "*.*" -exec grep -l "vmess\|vless\|trojan\|ss://" {} \; | while read file; do
           if [[ "$file" != *"README"* ]]; then
             echo "## Node configurations from: $file" >> ../temp_nodes.txt
             echo "" >> ../temp_nodes.txt
@@ -88,8 +88,6 @@ jobs:
         echo "" >> nodes
         echo "# Last updated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> nodes
         echo "# Source: https://github.com/free-nodes/v2rayfree" >> nodes
-
-        cat nodes
     
     - name: Commit and push changes
       run: |
