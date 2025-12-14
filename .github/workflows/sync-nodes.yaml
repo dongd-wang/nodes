@@ -16,7 +16,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: dongd-wang/nodes
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.PAT_TOKEN }}
         path: target-repo
     
     - name: Checkout source repository
@@ -116,7 +116,7 @@ jobs:
         # Push changes
         git push
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
     
     - name: Clean up
       run: |
