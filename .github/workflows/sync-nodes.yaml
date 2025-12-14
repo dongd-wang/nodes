@@ -33,7 +33,7 @@ jobs:
     - name: Extract and process content
       run: |
         cd source-repo
-        
+        ls .
         # Create a temporary file to store all content
         echo "# V2Ray Free Nodes - $(date)" > ../temp_nodes.txt
         echo "" >> ../temp_nodes.txt
@@ -41,6 +41,7 @@ jobs:
         # Process all files except README.md
         find . -type f ! -name "*.*" | grep -v README.md | while read file; do
           if [ -f "$file" ]; then
+            ls $file
             echo "## Content from: $file" >> ../temp_nodes.txt
             echo "" >> ../temp_nodes.txt
             cat "$file" >> ../temp_nodes.txt
@@ -67,6 +68,7 @@ jobs:
         
         # Look for any files with node configurations
         find . -type f ! -name "*.*" -exec grep -l "vmess\|vless\|trojan\|ss://" {} \; | while read file; do
+          ls $file
           if [[ "$file" != *"README"* ]]; then
             echo "## Node configurations from: $file" >> ../temp_nodes.txt
             echo "" >> ../temp_nodes.txt
