@@ -1,0 +1,117 @@
+name: Sync V2Ray Nodes
+
+on:
+  schedule:
+    # Run every 1 hours
+    - cron: '0 */1 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+
+jobs:
+  sync-nodes:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout target repository
+      uses: actions/checkout@v4
+      with:
+        repository: dongd-wang/nodes
+        token: ${{ secrets.GITHUB_TOKEN }}
+        path: target-repo
+    
+    - name: Checkout source repository
+      uses: actions/checkout@v4
+      with:
+        repository: free-nodes/v2rayfree
+        path: source-repo
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Extract and process content
+      run: |
+        cd source-repo
+        
+        # Create a temporary file to store all content
+        echo "# V2Ray Free Nodes - $(date)" > ../temp_nodes.txt
+        echo "" >> ../temp_nodes.txt
+        
+        # Process all files except README.md
+        find . -type f -name "*.txt" -o -name "*.yaml" -o -name "*.yml" -o -name "*.json" -o -name "*.conf" | grep -v README.md | while read file; do
+          if [ -f "$file" ]; then
+            echo "## Content from: $file" >> ../temp_nodes.txt
+            echo "" >> ../temp_nodes.txt
+            cat "$file" >> ../temp_nodes.txt
+            echo "" >> ../temp_nodes.txt
+            echo "---" >> ../temp_nodes.txt
+            echo "" >> ../temp_nodes.txt
+          fi
+        done
+        
+        # Also include any subscription links or node configurations
+        if [ -f "clash.yaml" ]; then
+          echo "## Clash Configuration" >> ../temp_nodes.txt
+          echo "" >> ../temp_nodes.txt
+          cat clash.yaml >> ../temp_nodes.txt
+          echo "" >> ../temp_nodes.txt
+        fi
+        
+        if [ -f "v2ray.txt" ]; then
+          echo "## V2Ray Configurations" >> ../temp_nodes.txt
+          echo "" >> ../temp_nodes.txt
+          cat v2ray.txt >> ../temp_nodes.txt
+          echo "" >> ../temp_nodes.txt
+        fi
+        
+        # Look for any files with node configurations
+        find . -type f \( -name "*.txt" -o -name "*.yaml" -o -name "*.yml" \) -exec grep -l "vmess\|vless\|trojan\|ss://" {} \; | while read file; do
+          if [[ "$file" != *"README"* ]]; then
+            echo "## Node configurations from: $file" >> ../temp_nodes.txt
+            echo "" >> ../temp_nodes.txt
+            cat "$file" >> ../temp_nodes.txt
+            echo "" >> ../temp_nodes.txt
+            echo "---" >> ../temp_nodes.txt
+            echo "" >> ../temp_nodes.txt
+          fi
+        done
+    
+    - name: Update nodes file
+      run: |
+        cd target-repo
+        
+        # Copy the processed content to the nodes file
+        cp ../temp_nodes.txt nodes
+        
+        # Add timestamp and source information
+        echo "" >> nodes
+        echo "# Last updated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> nodes
+        echo "# Source: https://github.com/free-nodes/v2rayfree" >> nodes
+    
+    - name: Commit and push changes
+      run: |
+        cd target-repo
+        
+        # Configure git
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if there are changes
+        if git diff --quiet nodes; then
+          echo "No changes detected"
+          exit 0
+        fi
+        
+        # Add and commit changes
+        git add nodes
+        git commit -m "Auto-sync nodes from v2rayfree - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        
+        # Push changes
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Clean up
+      run: |
+        rm -f temp_nodes.txt
