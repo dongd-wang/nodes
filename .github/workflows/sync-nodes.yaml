@@ -34,14 +34,19 @@ jobs:
       run: |
         cd source-repo
         ls .
+        
         # Create a temporary file to store all content
         echo "# V2Ray Free Nodes - $(date)" > ../temp_nodes.txt
         echo "" >> ../temp_nodes.txt
         
-        # Process all files except README.md
-        find . -type f ! -name "*.*" | grep -v README.md | while read file; do
-          if [ -f "$file" ]; then
-            ls $file
+        # Process all files in current directory only (no subdirectories, no hidden files)
+        find . -maxdepth 1 -type f ! -name ".*" ! -name "*README*" ! -name "*readme*" | while read file; do
+          # Skip the current directory indicator
+          if [ "$file" = "." ]; then
+            continue
+          fi
+          
+          if [ -f "$file" ] && [ -s "$file" ]; then
             echo "## Content from: $file" >> ../temp_nodes.txt
             echo "" >> ../temp_nodes.txt
             cat "$file" >> ../temp_nodes.txt
@@ -66,10 +71,9 @@ jobs:
           echo "" >> ../temp_nodes.txt
         fi
         
-        # Look for any files with node configurations
-        find . -type f ! -name "*.*" -exec grep -l "vmess\|vless\|trojan\|ss://" {} \; | while read file; do
-          ls $file
-          if [[ "$file" != *"README"* ]]; then
+        # Look for any files with node configurations (current directory only)
+        find . -maxdepth 1 -type f ! -name ".*" ! -name "*README*" ! -name "*readme*" -exec grep -l "vmess\|vless\|trojan\|ss://" {} \; 2>/dev/null | while read file; do
+          if [ "$file" != "." ] && [ -f "$file" ] && [ -s "$file" ]; then
             echo "## Node configurations from: $file" >> ../temp_nodes.txt
             echo "" >> ../temp_nodes.txt
             cat "$file" >> ../temp_nodes.txt
