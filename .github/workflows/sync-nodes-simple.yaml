@@ -1,0 +1,117 @@
+name: Simple V2Ray Nodes Sync
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync-nodes:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout target repository
+      uses: actions/checkout@v4
+      with:
+        repository: dongd-wang/nodes
+        token: ${{ secrets.GITHUB_TOKEN }}
+        path: target-repo
+    
+    - name: Checkout source repository
+      uses: actions/checkout@v4
+      with:
+        repository: free-nodes/v2rayfree
+        path: source-repo
+    
+    - name: Process and sync content
+      run: |
+        cd source-repo
+        
+        # List all files for debugging
+        echo "Files in source repository:"
+        ls -la
+        
+        # Create header
+        echo "# V2Ray Free Nodes Collection" > ../nodes_content.txt
+        echo "# Auto-generated from: https://github.com/free-nodes/v2rayfree" >> ../nodes_content.txt
+        echo "# Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> ../nodes_content.txt
+        echo "" >> ../nodes_content.txt
+        
+        # Initialize file counter
+        file_count=0
+        
+        # Find and process all files in current directory only (no subdirectories, no hidden files)
+        find . -maxdepth 1 -type f ! -name ".*" ! -name "*README*" ! -name "*readme*" | while read file; do
+          # Skip the current directory indicator
+          if [ "$file" = "." ]; then
+            continue
+          fi
+          
+          if [ -f "$file" ] && [ -s "$file" ]; then
+            echo "Processing file: $file"
+            echo "## Content from: $file" >> ../nodes_content.txt
+            echo "File size: $(wc -c < "$file") bytes" >> ../nodes_content.txt
+            echo "" >> ../nodes_content.txt
+            cat "$file" >> ../nodes_content.txt
+            echo "" >> ../nodes_content.txt
+            echo "---" >> ../nodes_content.txt
+            echo "" >> ../nodes_content.txt
+            file_count=$((file_count + 1))
+          fi
+        done
+        
+        # Add footer with file count
+        echo "# Files processed: $file_count" >> ../nodes_content.txt
+        echo "# Last updated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> ../nodes_content.txt
+        echo "# Source: https://github.com/free-nodes/v2rayfree" >> ../nodes_content.txt
+        
+        # Show generated file info
+        echo "Generated file size: $(wc -c < ../nodes_content.txt) bytes"
+        echo "Generated file preview:"
+        head -20 ../nodes_content.txt
+    
+    - name: Update target repository
+      run: |
+        cd target-repo
+        
+        # Show current status
+        echo "Current target repository status:"
+        ls -la
+        
+        # Copy the new content
+        cp ../nodes_content.txt nodes
+        
+        # Configure git
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Show git status
+        echo "Git status after copying new content:"
+        git status
+        
+        # Show diff if any
+        echo "Git diff:"
+        git diff nodes || echo "No diff output"
+        
+        # Check if there are changes and commit
+        if git diff --quiet nodes; then
+          echo "No changes detected in git diff"
+          # Force update with timestamp to ensure changes
+          echo "" >> nodes
+          echo "# Force update: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> nodes
+        fi
+        
+        # Add and commit changes
+        git add nodes
+        if git diff --cached --quiet; then
+          echo "No staged changes to commit"
+        else
+          git commit -m "Auto-sync nodes from v2rayfree - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          git push
+          echo "Changes committed and pushed successfully"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Cleanup
+      run: rm -f nodes_content.txt
