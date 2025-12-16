@@ -91,16 +91,35 @@ jobs:
         fi
         
         # Look for any files with node configurations (current directory only)
-        find . -maxdepth 1 -type f ! -name ".*" ! -name "*README*" ! -name "*readme*" -exec grep -l "vmess\|vless\|trojan\|ss://" {} \; 2>/dev/null | while read file; do
-          if [ "$file" != "." ] && [ -f "$file" ] && [ -s "$file" ]; then
-            echo "## Node configurations from: $file" >> ../temp_nodes.txt
-            echo "" >> ../temp_nodes.txt
-            cat "$file" >> ../temp_nodes.txt
-            echo "" >> ../temp_nodes.txt
-            echo "---" >> ../temp_nodes.txt
-            echo "" >> ../temp_nodes.txt
+        # Only include content from the single most-recently modified matching file.
+        newest=""
+        newest_mtime=0
+        # Use find -print0 to handle filenames with spaces/newlines
+        while IFS= read -r -d '' file; do
+          # Skip hidden/readme files already filtered by find
+          if [ -f "$file" ] && [ -s "$file" ]; then
+            if grep -Eq "vmess|vless|trojan|ss://" "$file"; then
+              mtime=$(stat -c %Y "$file" 2>/dev/null || stat -f %m "$file" 2>/dev/null)
+              # Ensure mtime is numeric
+              if [ -n "$mtime" ] && [ "$mtime" -gt "$newest_mtime" ]; then
+                newest_mtime=$mtime
+                newest="$file"
+              fi
+            fi
           fi
-        done
+        done < <(find . -maxdepth 1 -type f ! -name ".*" ! -name "*README*" ! -name "*readme*" -print0 2>/dev/null)
+
+        if [ -n "$newest" ]; then
+          echo "## Node configurations from: $newest" >> ../temp_nodes.txt
+          echo "" >> ../temp_nodes.txt
+          cat "$newest" >> ../temp_nodes.txt
+          echo "" >> ../temp_nodes.txt
+          echo "---" >> ../temp_nodes.txt
+          echo "" >> ../temp_nodes.txt
+        else
+          echo "No node configuration files found matching patterns." >> ../temp_nodes.txt
+          echo "" >> ../temp_nodes.txt
+        fi
 
     - name: Update nodes file
       run: |
@@ -137,4 +156,4 @@ jobs:
 
     - name: Clean up
       run: |
-        rm -f temp_nodes.txt
+        rm -f ../temp_nodes.txt || true
