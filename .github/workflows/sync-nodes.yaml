@@ -92,8 +92,8 @@ jobs:
         
         # Add timestamp and source information
         echo "" >> nodes
-        echo "# Last updated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> nodes
-        echo "# Source: https://github.com/free-nodes/v2rayfree" >> nodes
+        # echo "# Last updated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> nodes
+        # echo "# Source: https://github.com/free-nodes/v2rayfree" >> nodes
     
     - name: Commit and push changes
       run: |
