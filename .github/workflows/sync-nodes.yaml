@@ -2,34 +2,53 @@ name: Sync V2Ray Nodes
 
 on:
   schedule:
-    # Run every 6 hours
+    # Run every hour (adjust if needed)
     - cron: '0 */1 * * *'
   workflow_dispatch:
-    # Allow manual trigger
+    # Allow manual trigger and optional override of source repository
+    inputs:
+      source_repo:
+        description: 'Source repository in owner/repo format (overrides repository secret SOURCE_REPO)'
+        required: false
+        default: ''
 
 jobs:
   sync-nodes:
     runs-on: ubuntu-latest
-    
+
+    # Compute the SOURCE_REPO used by the job:
+    # - If triggered via workflow_dispatch with input `source_repo`, that value is used
+    # - Otherwise the repository secret SOURCE_REPO is used
+    env:
+      SOURCE_REPO: ${{ github.event.inputs.source_repo != '' && github.event.inputs.source_repo || secrets.SOURCE_REPO }}
+
     steps:
+    - name: Ensure SOURCE_REPO is provided
+      run: |
+        if [ -z "$SOURCE_REPO" ]; then
+          echo "ERROR: SOURCE_REPO is not set. Provide it via the workflow_dispatch input 'source_repo' or set the repository secret 'SOURCE_REPO'."
+          exit 1
+        fi
+        echo "Using SOURCE_REPO=$SOURCE_REPO"
+
     - name: Checkout target repository
       uses: actions/checkout@v4
       with:
         repository: dongd-wang/nodes
         token: ${{ secrets.PAT_TOKEN }}
         path: target-repo
-    
-    - name: Checkout source repository
+
+    - name: Checkout source repository (from env SOURCE_REPO)
       uses: actions/checkout@v4
       with:
-        repository: free-nodes/v2rayfree
+        repository: ${{ env.SOURCE_REPO }}
         path: source-repo
-    
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-    
+
     - name: Extract and process content
       run: |
         cd source-repo
@@ -82,7 +101,7 @@ jobs:
             echo "" >> ../temp_nodes.txt
           fi
         done
-    
+
     - name: Update nodes file
       run: |
         cd target-repo
@@ -92,9 +111,7 @@ jobs:
         
         # Add timestamp and source information
         echo "" >> nodes
-        # echo "# Last updated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> nodes
-        # echo "# Source: https://github.com/free-nodes/v2rayfree" >> nodes
-    
+
     - name: Commit and push changes
       run: |
         cd target-repo
@@ -111,13 +128,13 @@ jobs:
         
         # Add and commit changes
         git add nodes
-        git commit -m "Auto-sync nodes from v2rayfree - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        git commit -m "Auto-sync nodes from ${{ env.SOURCE_REPO }} - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         
         # Push changes
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-    
+
     - name: Clean up
       run: |
         rm -f temp_nodes.txt
