@@ -128,7 +128,7 @@ jobs:
         
         # Add and commit changes
         git add nodes
-        git commit -m "Auto-sync nodes from ${{ env.SOURCE_REPO }} - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        git commit -m "Auto-sync nodes  - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         
         # Push changes
         git push
